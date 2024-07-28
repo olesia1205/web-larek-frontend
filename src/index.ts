@@ -2,6 +2,7 @@ import './scss/styles.scss';
 
 import { AppState } from './components/AppState';
 import { EventEmitter } from './components/base/EventEmitter';
+import { Basket } from './components/Basket';
 import { Page } from './components/Page';
 import { Modal } from './components/Modal';
 import { Card } from './components/Card';
@@ -19,6 +20,10 @@ const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
 const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
+const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
+const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
+
+const basket = new Basket(cloneTemplate(basketTemplate), events);
 
 export type CatalogChangeEvent = {
 	catalog: IProduct[];
@@ -81,4 +86,47 @@ events.on('preview:changed', (item: IProduct) => {
 				appData.basket.indexOf(item) === -1 ? 'Купить' : 'Удалить из корзины',
 		}),
 	});
+});
+
+events.on('product:selected', (item: IProduct) => {
+	if (appData.basket.indexOf(item) === -1) {
+		appData.addToBasket(item);
+		events.emit('product:add', item);
+	} else {
+		appData.removeFromBasket(item);
+		events.emit('product:remove', item);
+	}
+});
+
+events.on('basket:open', () => {
+	modal.render({ content: basket.render({}) });
+});
+
+events.on('basket:changed', (items: IProduct[]) => {
+	basket.products = items.map((item, index) => {
+		const card = new Card(cloneTemplate(cardBasketTemplate), {
+			onClick: () => {
+				events.emit('card:delete', item);
+			},
+		});
+
+		return card.render({
+			title: item.title,
+			price: item.price,
+			index: (index + 1).toString(),
+		});
+	});
+
+	const total = appData.getTotalPrice();
+	basket.total = total;
+	appData.order.total = total;
+	appData.order.items = appData.basket.map((item) => item.id);
+
+	basket.selected = appData.basket.length;
+});
+
+events.on('card:delete', (item: IProduct) => appData.removeFromBasket(item));
+
+events.on('counter:changed', () => {
+	page.counter = appData.basket.length;
 });
