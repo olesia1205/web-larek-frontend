@@ -1,5 +1,6 @@
 import './scss/styles.scss';
 
+import { Address } from './components/Address';
 import { AppState } from './components/AppState';
 import { EventEmitter } from './components/base/EventEmitter';
 import { Basket } from './components/Basket';
@@ -7,7 +8,7 @@ import { Page } from './components/Page';
 import { Modal } from './components/Modal';
 import { Card } from './components/Card';
 import { WebLarekAPI } from './components/WebLarekAPI';
-import { IProduct } from './types';
+import { IOrderForm, IProduct } from './types';
 import { API_URL, CDN_URL } from './utils/constants';
 import { cloneTemplate, ensureElement } from './utils/utils';
 
@@ -22,8 +23,10 @@ const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog');
 const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
 const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
 const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
+const orderTemplate = ensureElement<HTMLTemplateElement>('#order');
 
 const basket = new Basket(cloneTemplate(basketTemplate), events);
+const addressForm = new Address(cloneTemplate(orderTemplate), events);
 
 export type CatalogChangeEvent = {
 	catalog: IProduct[];
@@ -130,3 +133,32 @@ events.on('card:delete', (item: IProduct) => appData.removeFromBasket(item));
 events.on('counter:changed', () => {
 	page.counter = appData.basket.length;
 });
+
+events.on('addressForm:open', () => {
+	modal.render({
+		content: addressForm.render({
+			payment: '',
+			address: '',
+			isValid: false,
+			errors: [],
+		}),
+	});
+});
+
+events.on(
+	'address:change',
+	(data: { field: keyof IOrderForm; value: string }) => {
+		appData.setAddress(data.field, data.value);
+	}
+);
+
+events.on('address:exist', () => {
+	addressForm.isValid = true;
+});
+
+events.on(
+	'address:null',
+	(data: { field: keyof IOrderForm; value: string }) => {
+		appData.setAddress(data.field, '');
+	}
+);
