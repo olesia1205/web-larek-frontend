@@ -4,6 +4,7 @@ import { Address } from './components/Address';
 import { AppState } from './components/AppState';
 import { EventEmitter } from './components/base/EventEmitter';
 import { Basket } from './components/Basket';
+import { Contact } from './components/Contact';
 import { Page } from './components/Page';
 import { Modal } from './components/Modal';
 import { Card } from './components/Card';
@@ -24,9 +25,11 @@ const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
 const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
 const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
 const orderTemplate = ensureElement<HTMLTemplateElement>('#order');
+const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');
 
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const addressForm = new Address(cloneTemplate(orderTemplate), events);
+const contactsForm = new Contact(cloneTemplate(contactsTemplate), events);
 
 export type CatalogChangeEvent = {
 	catalog: IProduct[];
@@ -162,3 +165,41 @@ events.on(
 		appData.setAddress(data.field, '');
 	}
 );
+
+events.on('order:submit', () => {
+	events.emit('contactForm:open');
+});
+
+events.on('contactForm:open', () => {
+	modal.render({
+		content: contactsForm.render({
+			email: '',
+			phone: '',
+			isValid: false,
+			errors: [],
+		}),
+	});
+});
+
+events.on(
+	'contacts:change',
+	(data: { field: keyof IOrderForm; value: string }) => {
+		appData.setContact(data.field, data.value);
+	}
+);
+
+events.on('contact:exist', () => {
+	contactsForm.isValid = true;
+});
+
+events.on('email:null', (data: { field: keyof IOrderForm; value: string }) => {
+	appData.setContact(data.field, '');
+});
+
+events.on('phone:null', (data: { field: keyof IOrderForm; value: string }) => {
+	appData.setContact(data.field, '');
+});
+
+events.on('contacts:submit', () => {
+	events.emit('successForm:open');
+});
