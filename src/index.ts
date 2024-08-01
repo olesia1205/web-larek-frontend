@@ -8,8 +8,9 @@ import { Contact } from './components/Contact';
 import { Page } from './components/Page';
 import { Modal } from './components/Modal';
 import { Card } from './components/Card';
+import { Success } from './components/Success';
 import { WebLarekAPI } from './components/WebLarekAPI';
-import { IOrderForm, IProduct } from './types';
+import { IOrder, IOrderForm, IProduct } from './types';
 import { API_URL, CDN_URL } from './utils/constants';
 import { cloneTemplate, ensureElement } from './utils/utils';
 
@@ -26,10 +27,16 @@ const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');
 const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');
 const orderTemplate = ensureElement<HTMLTemplateElement>('#order');
 const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');
+const successTemplate = ensureElement<HTMLTemplateElement>('#success');
 
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const addressForm = new Address(cloneTemplate(orderTemplate), events);
 const contactsForm = new Contact(cloneTemplate(contactsTemplate), events);
+const successForm = new Success(cloneTemplate(successTemplate), {
+	onClick: () => {
+		modal.closeModal();
+	},
+});
 
 export type CatalogChangeEvent = {
 	catalog: IProduct[];
@@ -202,4 +209,26 @@ events.on('phone:null', (data: { field: keyof IOrderForm; value: string }) => {
 
 events.on('contacts:submit', () => {
 	events.emit('successForm:open');
+});
+
+events.on('successForm:open', () => {
+	const fetchData: IOrder = {
+		payment: appData.order.payment,
+		address: appData.order.address,
+		email: appData.order.email,
+		phone: appData.order.phone,
+		total: appData.order.total,
+		items: appData.order.items,
+	};
+
+	api
+		.postOrder(fetchData)
+		.then((res) => {
+			appData.clearBasket();
+			successForm.totalPrice = res.total.toString();
+			modal.render({ content: successForm.render({}) });
+		})
+		.catch((err) => {
+			console.error(err);
+		});
 });
